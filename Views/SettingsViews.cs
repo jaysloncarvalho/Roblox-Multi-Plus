@@ -91,7 +91,6 @@ namespace RobloxMultiByJayy
 
         private UIElement BuildModernSettings()
         {
-            var stored = LoadSettingsFromIni();
             var delay = Field("Intervalo entre lançamentos (s)",
                 (launchDelayMs / 1000m).ToString("0.###", CultureInfo.CurrentCulture), 120);
             delay.MaxLength = 8;
@@ -101,13 +100,6 @@ namespace RobloxMultiByJayy
             var client = Field("ID do aplicativo", discordClientId, 210);
             client.MaxLength = 20;
             discordStatusLabel = Label(discordStatus, discordAccepted ? "Good" : "Muted", 13);
-            var unlock = Check("Destravar FPS", ReadFlag(stored, "UnlockFPS", false), "Switch");
-            var fps = Field("Limite de FPS", ReadSetting(stored, "MaxFPSValue", "144"), 120);
-            var refresh = Check("Renovar cookies de sessão", ReadFlag(stored, "AutoCookieRefresh", true), "Switch");
-            var passwords = Check("Salvar senhas", ReadFlag(stored, "SavePasswords", true), "Switch");
-            var updates = Check("Verificar atualizações", ReadFlag(stored, "CheckForUpdates", true), "Switch");
-            var aging = Check("Ocultar alerta de idade", ReadFlag(stored, "DisableAgingAlert", true), "Switch");
-            var port = Field("Porta do servidor local", ReadSetting(stored, "WebServerPort", "7963"), 120);
             var save = ActionButton("Salvar alterações", () =>
             {
                 decimal seconds;
@@ -117,8 +109,6 @@ namespace RobloxMultiByJayy
                     ShowFieldError(delay, "Informe um intervalo de 0,1 a 60 segundos.");
                     return;
                 }
-                int maxFps, serverPort;
-                if (!TryNumber(fps, 1, 10000, out maxFps) || !TryNumber(port, 1, 65535, out serverPort)) return;
                 string clientId = client.Text.Trim();
                 ulong parsedId;
                 if (clientId.Length > 0 && (!ulong.TryParse(clientId, NumberStyles.None, CultureInfo.InvariantCulture, out parsedId) || parsedId == 0))
@@ -133,14 +123,7 @@ namespace RobloxMultiByJayy
                     { "AccountJoinDelayMS", delayMs.ToString(CultureInfo.InvariantCulture) },
                     { "ConfirmSessionClose", SettingValue(confirm) },
                     { "ShowPresence", SettingValue(presence) },
-                    { "DiscordClientId", clientId },
-                    { "UnlockFPS", SettingValue(unlock) },
-                    { "MaxFPSValue", maxFps.ToString(CultureInfo.InvariantCulture) },
-                    { "AutoCookieRefresh", SettingValue(refresh) },
-                    { "SavePasswords", SettingValue(passwords) },
-                    { "CheckForUpdates", SettingValue(updates) },
-                    { "DisableAgingAlert", SettingValue(aging) },
-                    { "WebServerPort", serverPort.ToString(CultureInfo.InvariantCulture) }
+                    { "DiscordClientId", clientId }
                 };
                 if (!SaveModernSettings(changes)) return;
                 launchDelayMs = delayMs;
@@ -184,14 +167,6 @@ namespace RobloxMultiByJayy
                 SettingRow("Conexão", discordStatusLabel, "Mostra se o Discord confirmou a atividade ou se há um problema na conexão.")));
             AddSettingsSection(groups, "Sobre", SettingsGroup(
                 SettingRow(AppIdentity.Name, Label("Versão " + AppIdentity.Version, "Muted"))));
-            groups.Children.Add(Advanced(SettingsGroup(
-                SettingRow("Destravar FPS", unlock, "Preferência herdada. Esta versão salva o ajuste, mas não destrava o FPS do Roblox."),
-                SettingRow("Limite de FPS", fps, "Valor salvo como preferência. Ajuste o limite efetivo dentro do cliente oficial."),
-                SettingRow("Renovar cookies de sessão", refresh, "Preferência herdada. Este controle não aciona renovação automática nesta versão."),
-                SettingRow("Salvar senhas", passwords, "Preferência herdada. Este controle não muda o armazenamento das contas nesta versão."),
-                SettingRow("Verificar atualizações", updates, "Preferência herdada. Este controle não aciona uma busca por atualizações nesta versão."),
-                SettingRow("Ocultar alerta de idade", aging, "Preferência herdada. Este controle não altera os alertas do Roblox nesta versão."),
-                SettingRow("Porta do servidor local", port, "Porta salva por compatibilidade. Este controle não inicia um servidor nesta versão."))));
             page.Children.Add(Scroll(groups));
             return page;
         }
