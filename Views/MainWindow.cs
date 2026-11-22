@@ -311,6 +311,13 @@ namespace RobloxMultiByJayy
                 Resources.MergedDictionaries.Add((ResourceDictionary)XamlReader.Load(stream));
 
             Title = AppIdentity.Name;
+            using (var iconStream = typeof(MainWindow).Assembly.GetManifestResourceStream("RobloxMultiByJayy.AppIcon.ico"))
+            {
+                var icon = new System.Windows.Media.Imaging.IconBitmapDecoder(iconStream,
+                    System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat,
+                    System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+                Icon = icon.Frames[icon.Frames.Count - 1];
+            }
             MinWidth = 900;
             MinHeight = 590;
             AllowsTransparency = false;
