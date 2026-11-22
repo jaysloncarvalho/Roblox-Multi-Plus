@@ -1,4 +1,4 @@
-# Roblox Multi+
+﻿# Roblox Multi+
 
 **[Baixar para Windows](https://github.com/jaysloncarvalho/Roblox-Multi-Plus/releases/latest)**
 
@@ -12,8 +12,8 @@ O login integrado requer o [Runtime Microsoft Edge WebView2](https://developer.m
 
 ## Contas e privacidade
 
-- Em **Adicionar conta → Entrar com o Roblox**, o launcher abre o login oficial no WebView2 com um perfil novo separado do navegador pessoal. Quando o Roblox cria a sessão, o app verifica a identidade da conta e guarda o cookie autenticado no cofre, com o seu consentimento. O login manual por cookie continua disponível.
-- A janela restringe a navegação principal aos domínios de login do Roblox e desativa ferramentas de desenvolvedor, preenchimento automático, salvamento de senhas e extensões. O perfil é apagado após concluir ou cancelar. Fechar o processo à força ou perder energia pode deixar arquivos temporários em `WebViewLogin` na pasta de dados.
+- Em **Adicionar conta → Entrar com o Roblox**, o launcher abre o login oficial no WebView2 com um perfil novo separado do navegador pessoal. Quando o Roblox cria a sessão, o app verifica a identidade da conta e guarda o cookie autenticado no cofre, com o seu consentimento.
+- A janela restringe a navegação principal aos domínios de login do Roblox e desativa ferramentas de desenvolvedor, preenchimento automático, salvamento de senhas e extensões. O perfil é apagado após concluir ou cancelar. Na abertura seguinte, o launcher tenta remover perfis temporários da v1.2 ou posterior que ficaram abandonados após uma interrupção.
 - O cookie é uma credencial que dá acesso à sessão. Nunca compartilhe esse valor ou publique arquivos da pasta de dados. Métodos que abrem janelas externas ou exigem navegar para outro domínio podem não funcionar nessa janela.
 - O cofre e o backup são criptografados com DPAPI no escopo do usuário do Windows. Isso protege os arquivos em repouso. Programas que rodam com a mesma identidade do Windows podem conseguir acessar esses dados, e o launcher precisa descriptografar o cookie enquanto o usa.
 - O login não salva a senha do Roblox. As requisições que levam o cookie usam endpoints HTTPS do Roblox e não seguem redirecionamentos. O Discord Rich Presence é opcional e começa desligado.
@@ -30,7 +30,7 @@ O formato usa DPAPI e, no modo com senha, acrescenta AES-256-CBC autenticado por
 
 O bloqueio limpa as referências às credenciais nas contas e as chaves mantidas pelo cofre. O launcher pausa novos lançamentos e reconexões. Partidas abertas continuam rodando. Um pedido de autenticação que já saiu pode terminar, mas seu resultado não é usado para abrir o jogo depois do bloqueio. O recurso protege os dados em repouso e o acesso casual à interface. Ele não protege contra software malicioso no seu usuário enquanto o cofre está aberto.
 
-A filtragem remove formatos conhecidos de credenciais das novas mensagens e da lista de logs carregada. O arquivo de log antigo em disco não é reescrito; revise-o antes de compartilhar.
+Copiar ou exportar diagnósticos aplica um filtro que remove URLs, linhas com credenciais e identificadores pessoais. O arquivo de log antigo em disco não é reescrito; revise-o antes de compartilhar.
 
 ### Troca de senha e recuperação
 

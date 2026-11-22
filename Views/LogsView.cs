@@ -37,7 +37,7 @@ namespace RobloxMultiByJayy
                 "Abre o arquivo de log salvo no computador."));
             var toolbar = new DockPanel { Margin = new Thickness(0, 0, 0, 14) };
             var actions = Horizontal(
-                Describe(ActionButton("Copiar", CopyVisibleLogs), "Copia somente os eventos exibidos pelos filtros."),
+                Describe(ActionButton("Copiar", CopyVisibleLogs), "Copia os eventos exibidos com filtro de privacidade."),
                 Describe(ActionButton("Limpar logs", ClearVisibleHistory), "Limpa a lista da sessão atual e preserva o histórico salvo em disco."));
             ((FrameworkElement)actions.Children[1]).Margin = new Thickness(8, 0, 0, 0);
             var safeReport = Describe(ActionButton("Exportar diagnóstico", ExportSafeDiagnostics),
@@ -199,12 +199,7 @@ namespace RobloxMultiByJayy
                 !string.Equals(Path.GetExtension(file.FileName), ".txt", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(Path.GetFullPath(file.FileName), Path.GetFullPath(Path.Combine(dataDir, "log.txt")), StringComparison.OrdinalIgnoreCase))
                 return;
-            var names = accounts.SelectMany(account => new[] { account.Username, account.Alias })
-                .Concat(new[] { Environment.UserName }).Where(name => !string.IsNullOrWhiteSpace(name))
-                .Distinct(StringComparer.OrdinalIgnoreCase).OrderByDescending(name => name.Length).ToArray();
-            var lines = displayedLogs.Select(row =>
-                    SafeDiagnostics.Redact(row.Entry.Source + " | " + row.Entry.Message, names))
-                .Where(line => line != null).ToArray();
+            var lines = SafeVisibleLogLines();
             try
             {
                 var report = new[] { "Diagnóstico do " + AppIdentity.Name + " " + AppIdentity.Version,
@@ -218,20 +213,31 @@ namespace RobloxMultiByJayy
         }
 
 
+        private string[] SafeVisibleLogLines()
+        {
+            var names = accounts.SelectMany(account => new[] { account.Username, account.Alias })
+                .Concat(new[] { Environment.UserName }).Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase).OrderByDescending(name => name.Length).ToArray();
+            return displayedLogs.Select(row => SafeDiagnostics.Redact(
+                string.Format("[{0:HH:mm:ss}] [{1}] [{2}] {3}", row.Entry.Timestamp, row.Level,
+                    row.Entry.Source, row.Entry.Message), names)).Where(line => line != null).ToArray();
+        }
+
         private void CopyVisibleLogs()
         {
-            if (displayedLogs.Count == 0) return;
+            var lines = SafeVisibleLogLines();
+            if (lines.Length == 0) { SetStatus("Nenhum evento disponível após o filtro de privacidade."); return; }
             try
             {
-                Clipboard.SetText(string.Join(Environment.NewLine, displayedLogs.Select(row =>
-                    string.Format("[{0:HH:mm:ss}] [{1}] [{2}] {3}", row.Entry.Timestamp, row.Level, row.Entry.Source, row.Entry.Message))));
-                SetStatus("Eventos exibidos copiados.");
+                Clipboard.SetText(string.Join(Environment.NewLine, lines));
+                SetStatus("Eventos copiados com filtro de privacidade.");
             }
             catch (System.Runtime.InteropServices.ExternalException)
             {
                 SetStatus("A área de transferência está ocupada. Tente novamente.");
             }
         }
+
 
         private void ClearVisibleHistory()
         {

@@ -46,8 +46,68 @@ namespace RobloxMultiByJayy
             if (OverrideVariables.Any(name => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(name))))
                 throw new InvalidOperationException("O WebView2 tem substituições de ambiente ativas.");
 
-            string root = Path.GetFullPath(Path.Combine(dataDir, "WebViewLogin"));
+            string root = ProfileRoot(dataDir);
+            Directory.CreateDirectory(root);
+            if (!IsPlainDirectory(root)) throw new IOException("Pasta de perfis inválida.");
             string profile = Path.Combine(root, Guid.NewGuid().ToString("N"));
+            string lease = profile + ".lease";
+            try
+            {
+                using (new FileStream(lease, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
+                    return await RunProfileAsync(owner, root, profile);
+            }
+            finally { RetireLease(lease, profile); }
+        }
+
+        private static string ProfileRoot(string dataDir)
+        {
+            return Path.GetFullPath(Path.Combine(dataDir, "WebViewLogin"));
+        }
+
+        private static bool IsPlainDirectory(string folder)
+        {
+            return Directory.Exists(folder) && (File.GetAttributes(folder) & FileAttributes.ReparsePoint) == 0;
+        }
+
+        private static void RetireLease(string lease, string profile)
+        {
+            try
+            {
+                if (!Directory.Exists(profile)) File.Delete(lease);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+
+        internal static async Task CleanAbandonedProfilesAsync(string dataDir)
+        {
+            try
+            {
+                string root = ProfileRoot(dataDir);
+                if (!IsPlainDirectory(root)) return;
+                foreach (string lease in Directory.EnumerateFiles(root, "*.lease", SearchOption.TopDirectoryOnly))
+                {
+                    Guid id;
+                    if (!Guid.TryParseExact(Path.GetFileNameWithoutExtension(lease), "N", out id)) continue;
+                    string profile = Path.Combine(root, Path.GetFileNameWithoutExtension(lease));
+                    try
+                    {
+                        if ((File.GetAttributes(lease) & FileAttributes.ReparsePoint) != 0) continue;
+                        using (new FileStream(lease, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                            await DeleteProfileAsync(root, profile);
+                        RetireLease(lease, profile);
+                    }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
+                }
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+
+        private static async Task<string> RunProfileAsync(Window owner, string root, string profile)
+        {
+
             var browser = new WebView2();
             var tip = new TextBlock
             {
@@ -193,7 +253,11 @@ namespace RobloxMultiByJayy
             {
                 try
                 {
-                    if (Directory.Exists(location)) Directory.Delete(location, true);
+                    if (Directory.Exists(location))
+                    {
+                        if (!IsPlainDirectory(root) || !IsPlainDirectory(location)) return false;
+                        Directory.Delete(location, true);
+                    }
                     return true;
                 }
                 catch (IOException) { }

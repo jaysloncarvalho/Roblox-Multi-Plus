@@ -10,8 +10,9 @@ namespace RobloxMultiByJayy
     {
         private const RegexOptions Options = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
         private static readonly Regex Sensitive = new Regex(
-            @"\broblosecurity\b|\broblox-player:|\bgameinfo:|\b(?:authorization|bearer|password|senha|webhook|joinscript|cookie|rbx-authentication-ticket|x-csrf-token)\s*[:=]|discord(?:app)?\.com/api/webhooks|\[segredo removido\]",
+            @"\broblosecurity\b|\broblox-player:|\bgameinfo:|\b(?:authorization|proxy-authorization|set-cookie|bearer|password|senha|webhook|joinscript|cookie|rbx-authentication-ticket|x-csrf-token)\s*[:=]|discord(?:app)?\.com/api/webhooks|\[segredo removido\]",
             Options);
+        private static readonly Regex WebAddress = new Regex(@"https?://[^\s<>""']+", Options);
         private static readonly Regex Addresses = new Regex(
             @"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?|(?<![\w:])(?:[0-9a-f]{0,4}:){2,}[0-9a-f:.%]+", Options);
         private static readonly Regex Identifiers = new Regex(
@@ -26,6 +27,7 @@ namespace RobloxMultiByJayy
         {
             if (string.IsNullOrEmpty(line) || Sensitive.IsMatch(line) || VaultProtection.Redact(line) != line)
                 return null;
+            line = WebAddress.Replace(line, "[URL]");
             line = Paths.Replace(line, "[pasta pessoal]");
             line = Email.Replace(line, "[e-mail]");
             line = Handles.Replace(line, "@[conta]");

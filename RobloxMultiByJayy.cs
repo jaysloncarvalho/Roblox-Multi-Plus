@@ -642,6 +642,7 @@ namespace RobloxMultiByJayy
         {
             appDir = AppDomain.CurrentDomain.BaseDirectory;
             dataDir = dataFolder;
+            Loaded += (sender, args) => StartLoginProfileCleanup();
 
             var initialSettings = LoadSettingsFromIni();
             showDiscordPresence = ReadFlag(initialSettings, "ShowPresence", false);
@@ -3825,6 +3826,15 @@ namespace RobloxMultiByJayy
 
         private AccountStore accountStore;
         private string accountStoreNotice;
+
+        private bool loginProfileCleanupStarted;
+
+        private async void StartLoginProfileCleanup()
+        {
+            if (loginProfileCleanupStarted) return;
+            loginProfileCleanupStarted = true;
+            await Task.Run(() => WebViewLogin.CleanAbandonedProfilesAsync(dataDir));
+        }
 
         private void LoadAllAccounts()
         {

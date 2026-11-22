@@ -20,49 +20,15 @@ namespace RobloxMultiByJayy
             StackPanel content;
             var dialog = CreateAccountDialog("Adicionar conta", 490, out content);
 
-            var manual = new StackPanel { Margin = new Thickness(16, 12, 16, 16) };
-            manual.Children.Add(DialogFieldLabel("Cookie .ROBLOSECURITY"));
-            var cookie = new PasswordBox { Style = (Style)Resources["SecretField"] };
-            AutomationProperties.SetName(cookie, "Cookie .ROBLOSECURITY");
-            manual.Children.Add(DialogCopy("Vincula uma sessão existente à conta. Cole apenas o cookie da sua própria conta e mantenha esse valor em sigilo.", bottom: 8));
-            manual.Children.Add(cookie);
-            manual.Children.Add(DialogFieldLabel("Apelido (opcional)"));
+            var browserPanel = new StackPanel { Margin = new Thickness(16) };
+            browserPanel.Children.Add(DialogCopy(
+                "Ao entrar na página oficial, você permite ao launcher ler o cookie desta sessão para iniciar jogos na sua conta. Ele é guardado no cofre criptografado deste PC.",
+                bottom: 10));
+            browserPanel.Children.Add(DialogFieldLabel("Apelido (opcional)"));
             var alias = Field("Apelido");
             SetWatermark(alias, "Ex.: Conta principal");
             Describe(alias, "Nome exibido apenas neste launcher para você identificar a conta.");
-            manual.Children.Add(alias);
-
-            var feedback = DialogCopy("", top: 10);
-            feedback.Visibility = Visibility.Collapsed;
-            AutomationProperties.SetLiveSetting(feedback, AutomationLiveSetting.Polite);
-            manual.Children.Add(feedback);
-
-            Button save = null;
-            save = ActionButton("Adicionar conta", async () =>
-            {
-                string clean = CleanRoblosecurityCookie(cookie.Password.Trim());
-                if (string.IsNullOrWhiteSpace(clean))
-                {
-                    ShowDialogFeedback(feedback, "Cole o cookie da conta para continuar.", true);
-                    cookie.Focus();
-                    return;
-                }
-
-                save.IsEnabled = false;
-                try { await LinkAccountSessionAsync(dialog, feedback, clean, alias.Text.Trim()); }
-                finally
-                {
-                    save.IsEnabled = true;
-                }
-            }, true);
-            save.HorizontalAlignment = HorizontalAlignment.Right;
-            save.Margin = new Thickness(0, 14, 0, 0);
-            manual.Children.Add(save);
-
-            var browserPanel = new StackPanel { Margin = new Thickness(16) };
-            browserPanel.Children.Add(DialogCopy(
-                "Entre na página oficial em uma janela separada. Depois do login, o launcher valida e guarda a sessão no cofre local.",
-                bottom: 10));
+            browserPanel.Children.Add(alias);
             var browserFeedback = DialogCopy("", top: 10);
             browserFeedback.Visibility = Visibility.Collapsed;
             AutomationProperties.SetLiveSetting(browserFeedback, AutomationLiveSetting.Polite);
@@ -70,7 +36,6 @@ namespace RobloxMultiByJayy
             browser = ActionButton("Entrar com o Roblox", async () =>
             {
                 browser.IsEnabled = false;
-                save.IsEnabled = false;
                 try
                 {
                     ShowDialogFeedback(browserFeedback, "Abrindo o login oficial…", false);
@@ -91,20 +56,17 @@ namespace RobloxMultiByJayy
                 }
                 catch (Exception)
                 {
-                    ShowDialogFeedback(browserFeedback, "Não foi possível usar a janela de login. Tente novamente ou use o vínculo manual.", true);
+                    ShowDialogFeedback(browserFeedback, "Não foi possível usar a janela de login. Tente novamente.", true);
                 }
                 finally
                 {
                     browser.IsEnabled = true;
-                    save.IsEnabled = true;
                 }
             }, true);
             browser.HorizontalAlignment = HorizontalAlignment.Left;
             browserPanel.Children.Add(browser);
             browserPanel.Children.Add(browserFeedback);
             content.Children.Add(Surface(browserPanel));
-            dialog.Closed += (sender, args) => cookie.Clear();
-            content.Children.Add(Surface(manual));
             dialog.Loaded += (sender, args) => browser.Focus();
             return dialog;
         }
