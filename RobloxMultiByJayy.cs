@@ -745,7 +745,7 @@ namespace RobloxMultiByJayy
 
 
 
-            AddLog("Roblox Multi by Jayy inicializado com sucesso.", "INFO", "SYSTEM");
+            AddLog(AppIdentity.Name + " " + AppIdentity.Version + " inicializado com sucesso.", "INFO", "SYSTEM");
             if (!string.IsNullOrEmpty(accountStoreNotice))
             {
                 SetStatus(accountStoreNotice);

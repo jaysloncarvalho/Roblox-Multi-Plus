@@ -310,7 +310,7 @@ namespace RobloxMultiByJayy
             using (var stream = typeof(MainWindow).Assembly.GetManifestResourceStream("RobloxMultiByJayy.Theme.xaml"))
                 Resources.MergedDictionaries.Add((ResourceDictionary)XamlReader.Load(stream));
 
-            Title = "Roblox Multi by Jayy";
+            Title = AppIdentity.Name;
             MinWidth = 900;
             MinHeight = 590;
             AllowsTransparency = false;

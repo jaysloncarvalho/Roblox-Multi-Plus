@@ -57,10 +57,10 @@ $references += $webViewFiles | Select-Object -First 2 | ForEach-Object { '/refer
 
 
 if (!$OutputDirectory) { $OutputDirectory = Join-Path $PSScriptRoot 'bin' }
-$binaryName = 'Roblox Multi by Jayy.exe'
+$binaryName = 'Roblox Multi+.exe'
 if ($UseProjectData) {
     $OutputDirectory = $PSScriptRoot
-    $binaryName = 'Roblox Multi by Jayy - Nova UI v2.exe'
+
 }
 
 [void][IO.Directory]::CreateDirectory($OutputDirectory)
@@ -86,8 +86,37 @@ $sources = @(
     (Join-Path $PSScriptRoot 'Services\SessionLifecycle.cs')
     (Join-Path $PSScriptRoot 'Services\DiscordRpcManager.cs')
 )
-& $compiler /nologo /target:winexe /platform:x64 /optimize+ "/out:$output" "/resource:$theme,RobloxMultiByJayy.Theme.xaml" @references @sources
-if ($LASTEXITCODE -ne 0) { throw "Falha na compilação (código $LASTEXITCODE)." }
+$version = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'VERSION')).Trim()
+if ($version -notmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$' -or
+    @($version.Split('.') | Where-Object { [int]$_ -ge 65535 }).Count) {
+    throw 'VERSION deve conter a versão no formato major.minor, por exemplo 1.1.'
+}
+$appVersion = "$version.0.0"
+$versionSource = Join-Path $cache ("VersionInfo-" + [Guid]::NewGuid().ToString('N') + '.cs')
+$versionCode = @"
+using System.Reflection;
+[assembly: AssemblyTitle("Roblox Multi+")]
+[assembly: AssemblyProduct("Roblox Multi+")]
+[assembly: AssemblyVersion("$appVersion")]
+[assembly: AssemblyFileVersion("$appVersion")]
+[assembly: AssemblyInformationalVersion("$version")]
+namespace RobloxMultiByJayy
+{
+    internal static class AppIdentity
+    {
+        internal const string Name = "Roblox Multi+";
+        internal const string Version = "$version";
+    }
+}
+"@
+
+[IO.File]::WriteAllText($versionSource, $versionCode, (New-Object Text.UTF8Encoding($true)))
+try {
+    & $compiler /nologo /target:winexe /platform:x64 /optimize+ "/out:$output" "/resource:$theme,RobloxMultiByJayy.Theme.xaml" @references @sources $versionSource
+    if ($LASTEXITCODE -ne 0) { throw "Falha na compilação (código $LASTEXITCODE)." }
+} finally {
+    Remove-Item -LiteralPath $versionSource -ErrorAction SilentlyContinue
+}
 
 foreach ($file in $webViewFiles) { Copy-Item -LiteralPath $file -Destination $OutputDirectory -Force }
 Copy-Item -LiteralPath (Join-Path $package 'LICENSE.txt') -Destination (Join-Path $OutputDirectory 'WebView2-LICENSE.txt') -Force

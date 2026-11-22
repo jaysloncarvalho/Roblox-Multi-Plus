@@ -207,7 +207,7 @@ namespace RobloxMultiByJayy
                 .Where(line => line != null).ToArray();
             try
             {
-                var report = new[] { "Diagnóstico do Roblox Multi by Jayy",
+                var report = new[] { "Diagnóstico do " + AppIdentity.Name + " " + AppIdentity.Version,
                     "Eventos filtrados. Revise o arquivo antes de compartilhar.", "" }.Concat(lines);
                 AccountStore.WriteAtomically(file.FileName,
                     new System.Text.UTF8Encoding(false).GetBytes(string.Join(Environment.NewLine, report)), null);

@@ -183,7 +183,7 @@ namespace RobloxMultiByJayy
                 SettingRow("ID do aplicativo", client, "Identifica o aplicativo usado para exibir a atividade no Discord. Deixe vazio para usar o padrão."),
                 SettingRow("Conexão", discordStatusLabel, "Mostra se o Discord confirmou a atividade ou se há um problema na conexão.")));
             AddSettingsSection(groups, "Sobre", SettingsGroup(
-                SettingRow("Roblox Multi by Jayy", Label("Versão 1.0.0", "Muted"))));
+                SettingRow(AppIdentity.Name, Label("Versão " + AppIdentity.Version, "Muted"))));
             groups.Children.Add(Advanced(SettingsGroup(
                 SettingRow("Destravar FPS", unlock, "Preferência herdada. Esta versão salva o ajuste, mas não destrava o FPS do Roblox."),
                 SettingRow("Limite de FPS", fps, "Valor salvo como preferência. Ajuste o limite efetivo dentro do cliente oficial."),

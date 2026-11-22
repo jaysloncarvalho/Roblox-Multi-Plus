@@ -1,10 +1,14 @@
-﻿# Roblox Multi by Jayy
+﻿# Roblox Multi+
+
+**[Baixar para Windows](https://github.com/jaysloncarvalho/Roblox-Multi-Plus/releases/latest)**
+
+Baixe o ZIP do Windows de 64 bits, extraia todos os arquivos e abra **Roblox Multi+.exe**. Nenhuma compilação é necessária para usar o pacote da release.
 
 Gerenciador de contas para Windows. Esta edição pública organiza contas, abre o cliente oficial do Roblox, acompanha sessões confirmadas e oferece reconexão opcional e Discord Rich Presence. Projeto independente, sem afiliação com Roblox ou Discord.
 
 A edição pública depende das limitações do cliente oficial para abrir sessões. Ela não inclui mecanismo para forçar várias instâncias simultâneas.
 
-## Compilar
+## Compilar para desenvolvimento
 
 Use Windows de 64 bits com .NET Framework 4.8. Na pasta do código, execute:
 
@@ -14,7 +18,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 O script baixa uma versão fixa do SDK WebView2 do NuGet e verifica seu SHA-256 antes de usá-la.
 
-Abra o executável gerado em `bin\`. Para usar o pacote executável, extraia o ZIP inteiro e mantenha as DLLs ao lado do executável. O login no app requer o [Runtime Microsoft Edge WebView2](https://developer.microsoft.com/microsoft-edge/webview2/). Não execute como administrador para trocar de conta. O build não depende de arquivos de sessão ou configuração pessoal.
+Abra o executável gerado em `bin\`. Para usar o pacote executável, extraia o ZIP inteiro e mantenha as DLLs ao lado do executável. O login no app requer o [Runtime Microsoft Edge WebView2](https://developer.microsoft.com/microsoft-edge/webview2/). Não execute como administrador para trocar de conta. O build não depende de arquivos de sessão ou configuração pessoal. O arquivo `VERSION` define a versão. Incremente o segundo número para cada release, por exemplo de `1.1` para `1.2`.
 
 ## Contas e privacidade
 
