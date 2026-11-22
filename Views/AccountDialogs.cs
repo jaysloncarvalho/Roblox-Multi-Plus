@@ -24,11 +24,6 @@ namespace RobloxMultiByJayy
             browserPanel.Children.Add(DialogCopy(
                 "Ao entrar na página oficial, você permite ao launcher ler o cookie desta sessão para iniciar jogos na sua conta. Ele é guardado no cofre criptografado deste PC.",
                 bottom: 10));
-            browserPanel.Children.Add(DialogFieldLabel("Apelido (opcional)"));
-            var alias = Field("Apelido");
-            SetWatermark(alias, "Ex.: Conta principal");
-            Describe(alias, "Nome exibido apenas neste launcher para você identificar a conta.");
-            browserPanel.Children.Add(alias);
             var browserFeedback = DialogCopy("", top: 10);
             browserFeedback.Visibility = Visibility.Collapsed;
             AutomationProperties.SetLiveSetting(browserFeedback, AutomationLiveSetting.Polite);
@@ -44,7 +39,7 @@ namespace RobloxMultiByJayy
                     if (string.IsNullOrEmpty(session))
                         ShowDialogFeedback(browserFeedback, "Login interrompido ou expirado. Tente novamente.", false);
                     else
-                        await LinkAccountSessionAsync(dialog, browserFeedback, session, alias.Text.Trim());
+                        await LinkAccountSessionAsync(dialog, browserFeedback, session);
                 }
                 catch (Microsoft.Web.WebView2.Core.WebView2RuntimeNotFoundException)
                 {
@@ -71,14 +66,14 @@ namespace RobloxMultiByJayy
             return dialog;
         }
 
-        private async Task LinkAccountSessionAsync(Window dialog, TextBlock feedback, string session, string alias)
+        private async Task LinkAccountSessionAsync(Window dialog, TextBlock feedback, string session)
         {
             ShowDialogFeedback(feedback, "Verificando a conta…", false);
             var account = await Task.Run(() =>
             {
                 long userId;
                 string username = ResolveUsernameAndIdFromCookie(session, out userId);
-                return new AccountItem { Username = username, UserId = userId, Cookie = session, Alias = alias };
+                return new AccountItem { Username = username, UserId = userId, Cookie = session };
             });
             if (!dialog.IsVisible) return;
             if (string.IsNullOrEmpty(account.Username) || account.UserId <= 0)
