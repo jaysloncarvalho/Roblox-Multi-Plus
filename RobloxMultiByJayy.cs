@@ -532,6 +532,7 @@ namespace RobloxMultiByJayy
 
 
 
+        private bool accountAvatarWindowClosed;
         private static readonly System.Net.Http.HttpClient avatarClient = CreateAvatarClient();
         private readonly Dictionary<string, Task<ImageSource>> avatarCache =
             new Dictionary<string, Task<ImageSource>>(StringComparer.OrdinalIgnoreCase);
@@ -1766,11 +1767,23 @@ namespace RobloxMultiByJayy
                 avatarCache[account.Username] = request;
             }
 
-            ImageSource image = await request;
-            if (image == null) return;
-            avatar.Source = image;
-            avatar.Visibility = Visibility.Visible;
-            fallback.Visibility = Visibility.Collapsed;
+            ImageSource image = await request.ConfigureAwait(false);
+            if (image == null || Dispatcher.HasShutdownStarted) return;
+
+            try
+            {
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (accountAvatarWindowClosed) return;
+                    avatar.Source = image;
+                    avatar.Visibility = Visibility.Visible;
+                    fallback.Visibility = Visibility.Collapsed;
+                }).Task.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // O dispatcher pode encerrar antes de executar a atualização.
+            }
         }
 
         private static async Task<ImageSource> FetchAccountAvatarAsync(System.Net.Http.HttpClient client,
@@ -1897,6 +1910,7 @@ namespace RobloxMultiByJayy
 
         protected override void OnClosed(EventArgs e)
         {
+            accountAvatarWindowClosed = true;
             if (resourceTimer != null) resourceTimer.Stop();
             RestorePlayerPerformance();
             if (logWatcherTimer != null) logWatcherTimer.Stop();
