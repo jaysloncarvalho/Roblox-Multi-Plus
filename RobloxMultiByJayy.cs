@@ -675,6 +675,7 @@ namespace RobloxMultiByJayy
 
 
             LoadAllAccounts();
+            RestorePlayerSessions();
             Content = BuildModernWindow();
 
 
@@ -889,8 +890,7 @@ namespace RobloxMultiByJayy
 
 
 
-                        runningAccountPids.Remove(d);
-                        sessionStartTimes.Remove(d);
+                        ForgetPlayerSession(d, deadPid);
 
 
 

@@ -349,6 +349,7 @@ namespace RobloxMultiByJayy
         private void UpdateModernAccounts()
         {
             if (accountRows == null) return;
+            RestorePlayerSessions();
             var existing = new HashSet<AccountItem>(accounts);
             checkedAccounts.IntersectWith(existing);
             foreach (var key in accountLines.Keys.Where(key => !existing.Contains(key)).ToArray()) accountLines.Remove(key);
@@ -366,7 +367,11 @@ namespace RobloxMultiByJayy
             if (currentPage == "Reconexão")
                 UpdateAccountTable(reconnectRows, reconnectEmpty, reconnectLines, accounts, runningSet, true);
             accountTotal.Text = accounts.Count + (accounts.Count == 1 ? " conta" : " contas");
-            runningTotal.Text = running.Count + " em jogo";
+            int unidentified = CountUnidentifiedPlayers(running);
+            runningTotal.Text = running.Count + " em jogo" + (unidentified == 0 ? "" :
+                unidentified == 1 ? " · 1 sessão não identificada" : " · " + unidentified + " sessões não identificadas");
+            runningTotal.ToolTip = unidentified == 0 ? null :
+                "O Roblox está aberto, mas o launcher ainda não confirmou a conta dessas instâncias.";
             UpdateAccountSelection();
             DisplayPlayerPerformance();
         }

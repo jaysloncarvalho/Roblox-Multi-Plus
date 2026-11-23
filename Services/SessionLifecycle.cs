@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace RobloxMultiByJayy
@@ -12,6 +14,139 @@ namespace RobloxMultiByJayy
         // Protected by the same lock as the PID map. A reused PID is never sufficient.
         private readonly Dictionary<string, DateTime> sessionStartTimes =
             new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+
+        private bool restoredPlayerSessions;
+
+        private string PlayerSessionDirectory { get { return Path.Combine(dataDir, "PlayerSessions"); } }
+
+        private static string PlayerSessionAccountKey(AccountItem account)
+        {
+            if (account.UserId > 0) return "id:" + account.UserId.ToString(CultureInfo.InvariantCulture);
+            return PlayerSessionUsernameKey(account);
+        }
+
+        private static string PlayerSessionUsernameKey(AccountItem account)
+        {
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+                return Convert.ToBase64String(sha.ComputeHash(Encoding.UTF8.GetBytes(account.Username.ToUpperInvariant())));
+        }
+
+        private string PlayerSessionPath(int pid, DateTime started)
+        {
+            return Path.Combine(PlayerSessionDirectory, string.Format(CultureInfo.InvariantCulture,
+                "{0:D19}-{1}.session", started.Ticks, pid));
+        }
+
+        private void SavePlayerSession(AccountItem account, int pid, DateTime started)
+        {
+            string path = PlayerSessionPath(pid, started);
+            string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                Directory.CreateDirectory(PlayerSessionDirectory);
+                File.WriteAllText(temporary, PlayerSessionAccountKey(account));
+                File.Move(temporary, path);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            finally { TryDeletePlayerSessionFile(temporary); }
+        }
+
+        private static void TryDeletePlayerSessionFile(string path)
+        {
+            try { File.Delete(path); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+
+        // Call under the same lock used to add a confirmed process.
+        private void ForgetPlayerSession(string username, int pid)
+        {
+            DateTime started;
+            if (sessionStartTimes.TryGetValue(username, out started))
+                TryDeletePlayerSessionFile(PlayerSessionPath(pid, started));
+            runningAccountPids.Remove(username);
+            sessionStartTimes.Remove(username);
+        }
+
+        private void RestorePlayerSessions()
+        {
+            if (restoredPlayerSessions || vaultLocked || accounts.Count == 0) return;
+            string[] paths;
+            try
+            {
+                paths = Directory.Exists(PlayerSessionDirectory)
+                    ? Directory.GetFiles(PlayerSessionDirectory, "*.session") : new string[0];
+            }
+            catch (IOException) { return; }
+            catch (UnauthorizedAccessException) { return; }
+
+            var accountKeys = new Dictionary<string, AccountItem>(StringComparer.Ordinal);
+            foreach (var account in accounts)
+            {
+                if (string.IsNullOrEmpty(account.Username)) continue;
+                accountKeys[PlayerSessionAccountKey(account)] = account;
+                accountKeys[PlayerSessionUsernameKey(account)] = account;
+            }
+
+            lock (runningAccountPids)
+            {
+                foreach (string path in paths.OrderByDescending(value => value, StringComparer.Ordinal))
+                {
+                    string[] identity = Path.GetFileNameWithoutExtension(path).Split('-');
+                    long ticks;
+                    int pid;
+                    if (identity.Length != 2 ||
+                        !long.TryParse(identity[0], NumberStyles.None, CultureInfo.InvariantCulture, out ticks) ||
+                        ticks <= 0 || ticks > DateTime.MaxValue.Ticks ||
+                        !int.TryParse(identity[1], NumberStyles.None, CultureInfo.InvariantCulture, out pid) || pid <= 0)
+                        continue;
+
+                    var start = new DateTime(ticks, DateTimeKind.Utc);
+                    using (var process = OpenRobloxProcess(pid, start))
+                    {
+                        if (process == null)
+                        {
+                            TryDeletePlayerSessionFile(path);
+                            continue;
+                        }
+                    }
+
+                    string key;
+                    try { key = File.ReadAllText(path); }
+                    catch (IOException) { continue; }
+                    catch (UnauthorizedAccessException) { continue; }
+
+                    AccountItem account;
+                    if (!accountKeys.TryGetValue(key, out account) ||
+                        runningAccountPids.ContainsKey(account.Username) || runningAccountPids.ContainsValue(pid))
+                        continue;
+
+                    runningAccountPids[account.Username] = pid;
+                    sessionStartTimes[account.Username] = start;
+                    account.LastLaunchTime = start;
+                    account.Status = "Online";
+                }
+            }
+            restoredPlayerSessions = true;
+        }
+
+        private int CountUnidentifiedPlayers(IEnumerable<AccountItem> running)
+        {
+            var known = new HashSet<int>();
+            lock (runningAccountPids)
+            {
+                foreach (var account in running)
+                {
+                    int pid;
+                    if (runningAccountPids.TryGetValue(account.Username, out pid)) known.Add(pid);
+                }
+            }
+
+            var processes = Process.GetProcessesByName("RobloxPlayerBeta");
+            try { return processes.Count(process => !known.Contains(process.Id)); }
+            finally { foreach (var process in processes) process.Dispose(); }
+        }
 
         private const string NeedsSignIn = "Precisa entrar novamente";
         private const string UnconfirmedSession = "Sessão não confirmada";
@@ -106,8 +241,11 @@ namespace RobloxMultiByJayy
         private Process OpenTrackedProcess(string username, int pid)
         {
             DateTime start;
-            if (!sessionStartTimes.TryGetValue(username, out start)) return null;
+            return sessionStartTimes.TryGetValue(username, out start) ? OpenRobloxProcess(pid, start) : null;
+        }
 
+        private static Process OpenRobloxProcess(int pid, DateTime start)
+        {
             Process process = null;
             try
             {
@@ -138,6 +276,7 @@ namespace RobloxMultiByJayy
                         !entry.Key.Equals(account.Username, StringComparison.OrdinalIgnoreCase))) return false;
                     runningAccountPids[account.Username] = process.Id;
                     sessionStartTimes[account.Username] = started;
+                    SavePlayerSession(account, process.Id, started);
                 }
                 return true;
             }
@@ -163,8 +302,7 @@ namespace RobloxMultiByJayy
                     catch (InvalidOperationException) { return StopResult.Failed; }
                     catch (System.ComponentModel.Win32Exception) { return StopResult.Failed; }
                 }
-                runningAccountPids.Remove(account.Username);
-                sessionStartTimes.Remove(account.Username);
+                ForgetPlayerSession(account.Username, pid);
             }
             ClearSessionLogTracking(account.Username);
             account.CurrentGame = null;
