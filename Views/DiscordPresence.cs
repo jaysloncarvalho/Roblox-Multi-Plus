@@ -64,9 +64,11 @@ namespace RobloxMultiByJayy
                 activity["state"] = active + (active == 1 ? " conta em jogo" : " contas em jogo");
                 if (started.HasValue && started.Value > 0)
                     activity["timestamps"] = new { start = started.Value };
-                if (IsPlaceId(place))
-                    activity["buttons"] = new[] { new { label = "Abrir página do jogo", url = "https://www.roblox.com/games/" + place } };
             }
+            var github = new { label = "Abrir GitHub", url = "https://github.com/jaysloncarvalho/Roblox-Multi-Plus" };
+            activity["buttons"] = active > 0 && IsPlaceId(place)
+                ? new[] { new { label = "Abrir página do jogo", url = "https://www.roblox.com/games/" + place }, github }
+                : new[] { github };
             if (active > 0 && !string.IsNullOrEmpty(cover))
                 activity["assets"] = new { large_image = cover };
             return new JavaScriptSerializer().Serialize(activity);
