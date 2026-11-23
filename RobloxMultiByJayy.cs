@@ -532,7 +532,9 @@ namespace RobloxMultiByJayy
 
 
 
-        private readonly Dictionary<string, ImageSource> avatarCache = new Dictionary<string, ImageSource>(StringComparer.OrdinalIgnoreCase);
+        private static readonly System.Net.Http.HttpClient avatarClient = CreateAvatarClient();
+        private readonly Dictionary<string, Task<ImageSource>> avatarCache =
+            new Dictionary<string, Task<ImageSource>>(StringComparer.OrdinalIgnoreCase);
 
 
 
@@ -1753,516 +1755,118 @@ namespace RobloxMultiByJayy
 
 
 
-        private void LoadAccountAvatar(AccountItem acc, Image avatarImg, TextBlock fallbackText)
-
-
-
+        private async void LoadAccountAvatar(AccountItem account, Image avatar, TextBlock fallback)
         {
+            if (account == null || string.IsNullOrEmpty(account.Username)) return;
 
-
-
-            if (acc == null || string.IsNullOrEmpty(acc.Username)) return;
-
-
-
-            // 1. Cache volátil estritamente em memória RAM (zero arquivos no disco)
-
-
-
-            lock (avatarCache)
-
-
-
+            Task<ImageSource> request;
+            if (!avatarCache.TryGetValue(account.Username, out request))
             {
-
-
-
-                ImageSource cached;
-
-
-
-                if (avatarCache.TryGetValue(acc.Username, out cached))
-
-
-
-                {
-
-
-
-                    avatarImg.Source = cached;
-
-
-
-                    avatarImg.Visibility = Visibility.Visible;
-
-
-
-                    fallbackText.Visibility = Visibility.Collapsed;
-
-
-
-                    return;
-
-
-
-                }
-
-
-
+                request = FetchAccountAvatarAsync(avatarClient, account.UserId, account.Username);
+                avatarCache[account.Username] = request;
             }
 
-
-
-            // 2. Obter a foto diretamente da API do Roblox em segundo plano sem gravar nada no disco
-
-
-
-            Task.Run(async () =>
-
-
-
-            {
-
-
-
-                try
-
-
-
-                {
-
-
-
-                    long targetUserId = acc.UserId;
-
-
-
-                    // Se não tiver o UserId em cache, tentar extrair do Cookie
-
-
-
-                    if (targetUserId <= 0 && !string.IsNullOrEmpty(acc.Cookie))
-
-
-
-                    {
-
-
-
-                        try
-
-
-
-                        {
-
-
-
-                            int uidIdx = acc.Cookie.IndexOf("uid", StringComparison.OrdinalIgnoreCase);
-
-
-
-                            if (uidIdx != -1)
-
-
-
-                            {
-
-
-
-                                int numStart = -1;
-
-
-
-                                for (int i = uidIdx + 3; i < Math.Min(acc.Cookie.Length, uidIdx + 45); i++)
-
-
-
-                                {
-
-
-
-                                    if (char.IsDigit(acc.Cookie[i]))
-
-
-
-                                    {
-
-
-
-                                        if (numStart == -1) numStart = i;
-
-
-
-                                    }
-
-
-
-                                    else if (numStart != -1)
-
-
-
-                                    {
-
-
-
-                                        long parsed;
-
-
-
-                                        if (long.TryParse(acc.Cookie.Substring(numStart, i - numStart), out parsed) && parsed > 1000)
-
-
-
-                                        {
-
-
-
-                                            targetUserId = parsed;
-
-
-
-                                            acc.UserId = parsed;
-
-
-
-                                            break;
-
-
-
-                                        }
-
-
-
-                                        numStart = -1;
-
-
-
-                                    }
-
-
-
-                                }
-
-
-
-                            }
-
-
-
-                        }
-
-
-
-                        catch { }
-
-
-
-                    }
-
-
-
-                    // Se ainda não tiver o UserId, buscar via API oficial de usuários
-
-
-
-                    if (targetUserId <= 0)
-
-
-
-                    {
-
-
-
-                        using (WebClient wc = new WebClient())
-
-
-
-                        {
-
-
-
-                            wc.Headers[HttpRequestHeader.ContentType] = "application/json";
-
-
-
-                            string reqBody = "{\"usernames\":[\"" + acc.Username + "\"],\"excludeBannedUsers\":false}";
-
-
-
-                            string userJson = await wc.UploadStringTaskAsync("https://users.roblox.com/v1/usernames/users", "POST", reqBody);
-
-
-
-                            int idIdx = userJson.IndexOf("\"id\":");
-
-
-
-                            if (idIdx != -1)
-
-
-
-                            {
-
-
-
-                                int idStart = idIdx + 5;
-
-
-
-                                int idEnd = userJson.IndexOfAny(new char[] { ',', '}' }, idStart);
-
-
-
-                                if (idEnd != -1)
-
-
-
-                                {
-
-
-
-                                    long.TryParse(userJson.Substring(idStart, idEnd - idStart).Trim(), out targetUserId);
-
-
-
-                                    acc.UserId = targetUserId;
-
-
-
-                                }
-
-
-
-                            }
-
-
-
-                        }
-
-
-
-                    }
-
-
-
-                    if (targetUserId <= 0) return;
-
-
-
-                    // Obter a URL da foto de perfil diretamente dos servidores CDN do Roblox
-
-
-
-                    string thumbUrl = null;
-
-
-
-                    using (WebClient wc = new WebClient())
-
-
-
-                    {
-
-
-
-                        wc.Encoding = Encoding.UTF8;
-
-
-
-                        string thumbJson = await wc.DownloadStringTaskAsync(string.Format("https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={0}&size=420x420&format=Png&isCircular=false", targetUserId));
-
-
-
-                        int imgIdx = thumbJson.IndexOf("\"imageUrl\":\"");
-
-
-
-                        if (imgIdx != -1)
-
-
-
-                        {
-
-
-
-                            int imgStart = imgIdx + 12;
-
-
-
-                            int imgEnd = thumbJson.IndexOf("\"", imgStart);
-
-
-
-                            if (imgEnd != -1)
-
-
-
-                            {
-
-
-
-                                thumbUrl = thumbJson.Substring(imgStart, imgEnd - imgStart);
-
-
-
-                            }
-
-
-
-                        }
-
-
-
-                    }
-
-
-
-                    if (string.IsNullOrEmpty(thumbUrl)) return;
-
-
-
-                    // Carregar os bytes da imagem diretamente em memória RAM (MemoryStream) - ZERO arquivos salvos no sistema
-
-
-
-                    byte[] imgBytes;
-
-
-
-                    using (WebClient wc = new WebClient())
-
-
-
-                    {
-
-
-
-                        imgBytes = await wc.DownloadDataTaskAsync(new Uri(thumbUrl));
-
-
-
-                    }
-
-
-
-                    if (imgBytes != null && imgBytes.Length > 0)
-
-
-
-                    {
-
-
-
-                        Dispatcher.Invoke(() =>
-
-
-
-                        {
-
-
-
-                            try
-
-
-
-                            {
-
-
-
-                                using (MemoryStream ms = new MemoryStream(imgBytes))
-
-
-
-                                {
-
-
-
-                                    BitmapImage bi = new BitmapImage();
-
-
-
-                                    bi.BeginInit();
-
-
-
-                                    bi.StreamSource = ms;
-
-
-
-                                    bi.CacheOption = BitmapCacheOption.OnLoad;
-
-
-
-                                    bi.EndInit();
-
-
-
-                                    bi.Freeze();
-
-
-
-                                    lock (avatarCache)
-
-
-
-                                    {
-
-
-
-                                        avatarCache[acc.Username] = bi;
-
-
-
-                                    }
-
-
-
-                                    avatarImg.Source = bi;
-
-
-
-                                    avatarImg.Visibility = Visibility.Visible;
-
-
-
-                                    fallbackText.Visibility = Visibility.Collapsed;
-
-
-
-                                }
-
-
-
-                            }
-
-
-
-                            catch { }
-
-
-
-                        });
-
-
-
-                    }
-
-
-
-                }
-
-
-
-                catch { }
-
-
-
-            });
-
-
-
+            ImageSource image = await request;
+            if (image == null) return;
+            avatar.Source = image;
+            avatar.Visibility = Visibility.Visible;
+            fallback.Visibility = Visibility.Collapsed;
         }
 
+        private static async Task<ImageSource> FetchAccountAvatarAsync(System.Net.Http.HttpClient client,
+            long userId, string username)
+        {
+            try
+            {
+                var json = new System.Web.Script.Serialization.JavaScriptSerializer();
+                if (userId <= 0)
+                {
+                    string payload = json.Serialize(new { usernames = new[] { username }, excludeBannedUsers = false });
+                    using (var content = new System.Net.Http.StringContent(payload, Encoding.UTF8, "application/json"))
+                    using (var response = await client.PostAsync("https://users.roblox.com/v1/usernames/users", content).ConfigureAwait(false))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        var users = json.Deserialize<AvatarApiResponse>(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+                        if (users == null || users.data == null || users.data.Length == 0 || users.data[0] == null)
+                            return null;
+                        userId = users.data[0].id;
+                    }
+                }
+                if (userId <= 0) return null;
+
+                string endpoint = "https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" +
+                    userId.ToString(System.Globalization.CultureInfo.InvariantCulture) + "&size=150x150&format=Png&isCircular=false";
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    string payload = await client.GetStringAsync(endpoint).ConfigureAwait(false);
+                    var thumbnails = json.Deserialize<AvatarApiResponse>(payload);
+                    if (thumbnails == null || thumbnails.data == null || thumbnails.data.Length == 0)
+                        return null;
+                    var thumbnail = thumbnails.data[0];
+                    if (thumbnail == null || thumbnail.targetId != userId) return null;
+                    if (thumbnail.state == "Pending" && attempt < 2)
+                    {
+                        await Task.Delay(1500).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    Uri uri;
+                    if (thumbnail.state != "Completed" || !Uri.TryCreate(thumbnail.imageUrl, UriKind.Absolute, out uri)
+                        || uri.Scheme != Uri.UriSchemeHttps || !uri.Host.EndsWith(".rbxcdn.com", StringComparison.OrdinalIgnoreCase))
+                        return null;
+
+                    byte[] data = await client.GetByteArrayAsync(uri).ConfigureAwait(false);
+                    using (var stream = new MemoryStream(data, false))
+                    {
+                        var image = new BitmapImage();
+                        image.BeginInit();
+                        image.CacheOption = BitmapCacheOption.OnLoad;
+                        image.StreamSource = stream;
+                        image.EndInit();
+                        image.Freeze();
+                        return image;
+                    }
+                }
+                return null;
+            }
+            catch (System.Net.Http.HttpRequestException) { return null; }
+            catch (OperationCanceledException) { return null; }
+            catch (ArgumentException) { return null; }
+            catch (InvalidOperationException) { return null; }
+            catch (IOException) { return null; }
+            catch (NotSupportedException) { return null; }
+            catch (FormatException) { return null; }
+        }
+
+        private static System.Net.Http.HttpClient CreateAvatarClient()
+        {
+            var handler = new System.Net.Http.HttpClientHandler
+            {
+                UseCookies = false,
+                AllowAutoRedirect = false,
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12
+            };
+            var client = new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
+            client.DefaultRequestHeaders.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue
+            {
+                NoCache = true,
+                NoStore = true
+            };
+            return client;
+        }
+
+        private sealed class AvatarApiResponse
+        {
+            public AvatarApiItem[] data { get; set; }
+        }
+
+        private sealed class AvatarApiItem
+        {
+            public long id { get; set; }
+            public long targetId { get; set; }
+            public string state { get; set; }
+            public string imageUrl { get; set; }
+        }
 
 
         private void RefreshAccountsUI()
