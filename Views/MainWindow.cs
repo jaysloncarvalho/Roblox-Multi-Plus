@@ -11,6 +11,62 @@ namespace RobloxMultiByJayy
 {
     public partial class MainWindow
     {
+        private bool closeToTray;
+        private bool exitFromTray;
+        private System.Windows.Forms.NotifyIcon trayIcon;
+        private System.Drawing.Icon trayImage;
+        private System.Windows.Forms.ContextMenuStrip trayMenu;
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            base.OnClosing(e);
+            if (e.Cancel || !closeToTray || exitFromTray) return;
+            if (trayIcon == null)
+            {
+                using (var stream = typeof(MainWindow).Assembly.GetManifestResourceStream("RobloxMultiByJayy.AppIcon.ico"))
+                    trayImage = new System.Drawing.Icon(stream, 16, 16);
+                trayMenu = new System.Windows.Forms.ContextMenuStrip();
+                trayMenu.Items.Add("Abrir Roblox Multi+", null, (sender, args) => RestoreFromTray());
+                trayMenu.Items.Add("Sair", null, (sender, args) =>
+                {
+                    exitFromTray = true;
+                    Close();
+                });
+                trayIcon = new System.Windows.Forms.NotifyIcon
+                {
+                    Icon = trayImage,
+                    Text = AppIdentity.Name,
+                    ContextMenuStrip = trayMenu
+                };
+                trayIcon.MouseClick += (sender, args) =>
+                {
+                    if (args.Button == System.Windows.Forms.MouseButtons.Left) RestoreFromTray();
+                };
+            }
+            trayIcon.Visible = true;
+            e.Cancel = true;
+            Hide();
+        }
+
+        private void RestoreFromTray()
+        {
+            Show();
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Activate();
+            trayIcon.Visible = false;
+        }
+
+        private void DisposeTrayIcon()
+        {
+            if (trayIcon != null)
+            {
+                trayIcon.Visible = false;
+                trayIcon.Dispose();
+            }
+            if (trayMenu != null) trayMenu.Dispose();
+            if (trayImage != null) trayImage.Dispose();
+        }
+
         private readonly Dictionary<string, Button> navigation = new Dictionary<string, Button>();
         private readonly Dictionary<string, UIElement> pages = new Dictionary<string, UIElement>();
         private ContentControl pageHost;

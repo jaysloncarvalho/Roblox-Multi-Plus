@@ -646,6 +646,7 @@ namespace RobloxMultiByJayy
 
             var initialSettings = LoadSettingsFromIni();
             showDiscordPresence = ReadFlag(initialSettings, "ShowPresence", false);
+            closeToTray = ReadFlag(initialSettings, "CloseToTray", false);
             economicalSessions = ReadFlag(initialSettings, "EconomicalSessions", false);
             primaryAccount = ReadSetting(initialSettings, "PrimaryPerformanceAccount", "");
             confirmSessionClose = ReadFlag(initialSettings, "ConfirmSessionClose", true);
@@ -2298,6 +2299,7 @@ namespace RobloxMultiByJayy
             if (accountStore != null) accountStore.Lock();
             foreach (var account in accounts) account.Cookie = null;
             if (discordRpc != null) discordRpc.Dispose();
+            DisposeTrayIcon();
             base.OnClosed(e);
         }
 

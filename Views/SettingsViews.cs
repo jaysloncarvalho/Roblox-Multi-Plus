@@ -95,6 +95,7 @@ namespace RobloxMultiByJayy
                 (launchDelayMs / 1000m).ToString("0.###", CultureInfo.CurrentCulture), 120);
             delay.MaxLength = 8;
             var confirm = Check("Confirmar antes de encerrar sessões", confirmSessionClose, "Switch");
+            var background = Check("Continuar em segundo plano ao fechar", closeToTray, "Switch");
             var presence = Check("Exibir atividade no Discord", showDiscordPresence, "Switch");
             presence.Click += (sender, args) => ChangeDiscordPresence(presence);
             var client = Field("ID do aplicativo", discordClientId, 210);
@@ -121,12 +122,14 @@ namespace RobloxMultiByJayy
                 var changes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
                     { "AccountJoinDelayMS", delayMs.ToString(CultureInfo.InvariantCulture) },
+                    { "CloseToTray", SettingValue(background) },
                     { "ConfirmSessionClose", SettingValue(confirm) },
                     { "ShowPresence", SettingValue(presence) },
                     { "DiscordClientId", clientId }
                 };
                 if (!SaveModernSettings(changes)) return;
                 launchDelayMs = delayMs;
+                closeToTray = background.IsChecked == true;
                 confirmSessionClose = confirm.IsChecked == true;
                 ApplyDiscordSettings(showDiscordPresence, clientId);
                 AddLog("Configurações gerais salvas.", "SUCCESS", "CONFIG");
@@ -134,6 +137,9 @@ namespace RobloxMultiByJayy
 
             var page = Page("Configurações", save);
             var groups = new StackPanel();
+            AddSettingsSection(groups, "Janela", SettingsGroup(
+                SettingRow("Continuar em segundo plano ao fechar", background,
+                    "Ao fechar a janela, o launcher continua monitorando suas contas na bandeja do Windows. Clique no ícone para reabrir ou use o botão direito e escolha Sair.")));
             AddSettingsSection(groups, "Sessões", SettingsGroup(
                 SettingRow("Intervalo entre lançamentos (s)", delay, "Define a pausa entre os lançamentos de contas em lote."),
                 SettingRow("Confirmar antes de encerrar sessões", confirm, "Pede confirmação antes de fechar sessões pelo launcher.")));
